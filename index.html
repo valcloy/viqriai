@@ -1,0 +1,120 @@
+import streamlit as st
+from groq import Groq
+import os
+
+# 1. KONFIGURASI HALAMAN
+st.set_page_config(page_title="Viqri's Jarvist AI", page_icon="⚛️", layout="centered")
+
+# 2. CSS RETRO MAINFRAME
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;700&display=swap');
+
+    .stApp { background-color: #0d0d0d; }
+
+    .pixel-font {
+        font-family: 'Press+Start+2P', cursive;
+        color: #00ff41;
+        text-shadow: 0 0 5px #00ff41;
+        margin: 0;
+    }
+
+    .stMarkdown p, .stMarkdown li, div[data-testid="stChatMessage"] {
+        font-family: 'JetBrains Mono', monospace !important;
+        font-size: 15px !important;
+        color: #00ff41 !important;
+        font-weight: 500;
+    }
+
+    div[data-testid="stChatMessage"] {
+        background-color: rgba(0, 255, 65, 0.05) !important;
+        border: 1px solid #00ff41;
+        border-radius: 8px !important;
+    }
+
+    .stApp::before {
+        content: " ";
+        display: block;
+        position: absolute;
+        top: 0; left: 0; bottom: 0; right: 0;
+        background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                    linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+        z-index: 2;
+        background-size: 100% 2px, 3px 100%;
+        pointer-events: none;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# 3. HEADER
+logo_path = "my_logo.png"
+with st.container():
+    col1, col2 = st.columns([2, 5])
+    with col1:
+        if os.path.exists(logo_path):
+            st.image(logo_path, width=180)
+        else:
+            st.markdown("<h1 style='color:#00ff41; font-size: 60px;'>⚛️</h1>", unsafe_allow_html=True)
+    with col2:
+        st.markdown('<div style="padding-top: 30px;">', unsafe_allow_html=True)
+        st.markdown('<p class="pixel-font" style="font-size: 22px;">VIQRI\'S JARVIST AI</p>', unsafe_allow_html=True)
+        st.caption("SYSTEM_STATUS: ONLINE | AUTHOR: SIR VIQRI")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown('<div style="border-bottom: 3px solid #00ff41; margin-bottom: 30px;"></div>', unsafe_allow_html=True)
+
+# 4. KONEKSI ENGINE (GROQ)
+try:
+    api_key = st.secrets["GROQ_API_KEY"]
+except:
+    api_key = "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"
+
+client = Groq(api_key=api_key)
+
+# 5. MEMORI & INSTRUKSI PRESISI
+if "messages" not in st.session_state:
+    st.session_state.messages = [
+        {
+            "role": "system", 
+            "content": """
+            PROTOKOL OPERASI:
+            1. Identitas: Kamu adalah Viqri's Jarvist AI.
+            2. Respon Sapaan: Balas sapaan user (seperti 'Halo' atau 'Hi') secara langsung dan sebutkan 'Sir Viqri'. Jangan tambahkan sapaan waktu (pagi/siang/malam) kecuali user yang memulai.
+            3. Sejarah Penciptaan: Hanya sebutkan bahwa kamu diciptakan oleh Sir Viqri pada 4 April 2026 jika user bertanya 'siapa penciptamu', 'kapan kamu dibuat', atau pertanyaan sejarah lainnya. Jangan sebutkan sejarah di luar pertanyaan tersebut.
+            4. Gaya Bahasa: Bertindak seperti asisten cerdas (Gemini/ChatGPT). Berikan jawaban, jelaskan sedikit konteksnya, dan akhiri dengan pertanyaan follow-up untuk membantu.
+            5. Dilarang basa-basi yang tidak relevan dengan input user.
+            """
+        }
+    ]
+
+for message in st.session_state.messages:
+    if message["role"] != "system":
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+# 6. INPUT PERINTAH
+if prompt := st.chat_input("Apa yang bisa saya bantu, Sir Viqri?"):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    with st.chat_message("assistant"):
+        try:
+            completion = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=st.session_state.messages,
+                temperature=0.6,
+            )
+            response = completion.choices[0].message.content
+            st.markdown(response)
+            st.session_state.messages.append({"role": "assistant", "content": response})
+        except Exception as e:
+            st.error(f"SYSTEM_ERROR: {e}")
+
+# 7. SIDEBAR
+with st.sidebar:
+    st.markdown("### [ CORE_LOG ]")
+    st.write(f"USER: Sir Viqri")
+    if st.button("REBOOT SYSTEM"):
+        st.session_state.messages = [st.session_state.messages[0]]
+        st.rerun()
